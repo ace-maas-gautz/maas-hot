@@ -1,5 +1,17 @@
 @Library('ace@master') _ 
 
+def tagMatchRules = [
+  [
+    "meTypes": [
+      ["meType": "SERVICE"]
+    ],
+    tags : [
+      ["context": "CONTEXTLESS", "key": "app", "value": "simplenodeservice"],
+      ["context": "CONTEXTLESS", "key": "environment", "value": "staging"]
+    ]
+  ]
+]
+
 pipeline {
     parameters {
         string(name: 'APP_NAME', defaultValue: 'simplenodeservice', description: 'The name of the service to deploy.', trim: true)
@@ -8,6 +20,24 @@ pipeline {
         label 'kubegit'
     }
     stages {
+        stage('DT send test start event') {
+            steps {
+                container("curl") {
+                    script {
+                        def status = pushDynatraceInfoEvent (
+                            tagRule : tagMatchRules,
+                            source: "Jmeter",
+                            description: "Performance test started for ${env.APP_NAME}",
+                            title: "Jmeter Start",
+                            customProperties : [
+                                [key: 'VU Count', value: "1"],
+                                [key: 'Loop Count', value: "10"]
+                            ]
+                        )
+                    }
+                }
+            }
+        }
         stage('Run performance test') {
             steps {
                 checkout scm
@@ -33,7 +63,24 @@ pipeline {
                 }
             }
         }
-
+        stage('DT send test stop event') {
+            steps {
+                container("curl") {
+                    script {
+                        def status = pushDynatraceInfoEvent (
+                            tagRule : tagMatchRules,
+                            source: "Jmeter",
+                            description: "Performance test stopped for ${env.APP_NAME}",
+                            title: "Jmeter Stop",
+                            customProperties : [
+                                [key: 'VU Count', value: "1"],
+                                [key: 'Loop Count', value: "10"]
+                            ]
+                        )
+                    }
+                }
+            }
+        }
         stage('Manual approval') {
             // no agent, so executors are not used up when waiting for approvals
             agent none
