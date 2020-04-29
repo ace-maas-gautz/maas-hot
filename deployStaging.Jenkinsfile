@@ -93,7 +93,7 @@ pipeline {
           script {
             def status = dt_createUpdateAppDetectionRule (
               dtAppName : "simpleproject.staging.${env.APP_NAME}",
-              pattern : "http://${SERVICE_IP}",
+              pattern : "http://${SERVICE_IP}:${SERVICE_PORT}",
               applicationMatchType: "CONTAINS",
               applicationMatchTarget: "URL"
             )
